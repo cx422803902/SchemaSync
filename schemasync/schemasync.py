@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+# -*- coding: utf-8 -*- 
 import re
 import sys
 import os
@@ -9,6 +9,11 @@ import optparse
 import syncdb
 import utils
 import warnings
+import schemasyncext
+
+if sys.getdefaultencoding() != 'utf8':
+    reload(sys)
+    sys.setdefaultencoding('utf8')
 
 __author__ = """
 Mitch Matuson
@@ -51,7 +56,7 @@ PATCH_TPL = """--
 %(data)s"""
 
 
-def parse_cmd_line(fn):
+def parse_cmd_line(fn, extFn):
     """Parse the command line options and pass them to the application"""
 
     def processor():
@@ -120,6 +125,9 @@ def parse_cmd_line(fn):
                                 "Default is output directory. "
                                 "Log filename is schemasync.log"))
 
+        """ext optionals use extApp function"""
+        schemasyncext.extOptions(parser)
+   
         options, args = parser.parse_args(sys.argv[1:])
 
         if options.show_version:
@@ -129,6 +137,9 @@ def parse_cmd_line(fn):
         if (not args) or (len(args) != 2):
             parser.print_help()
             return 0
+         
+        if extFn(options, *args):
+            return 0;   
 
         return fn(*args, **dict(version_filename=options.version_filename,
                                 output_directory=options.output_directory,
@@ -140,7 +151,6 @@ def parse_cmd_line(fn):
                                 sync_comments=options.sync_comments))
 
     return processor
-
 
 def app(sourcedb='', targetdb='', version_filename=False,
         output_directory=None, log_directory=None, no_date=False,
@@ -258,10 +268,6 @@ def app(sourcedb='', targetdb='', version_filename=False,
             p_buffer.write(patch + '\n')
             r_buffer.write(revert + '\n')
 
-    if db_selected:
-        p_buffer.write(target_obj.selected.fk_checks(1) + '\n')
-        r_buffer.write(target_obj.selected.fk_checks(1) + '\n')
-
     for patch, revert in syncdb.sync_views(source_obj.selected, target_obj.selected):
         if patch and revert:
             if not db_selected:
@@ -298,37 +304,7 @@ def app(sourcedb='', targetdb='', version_filename=False,
     if db_selected:
         p_buffer.write(target_obj.selected.fk_checks(1) + '\n')
         r_buffer.write(target_obj.selected.fk_checks(1) + '\n')
-
-    for patch, revert in syncdb.sync_views(source_obj.selected, target_obj.selected):
-        if patch and revert:
-            if not db_selected:
-                p_buffer.write(target_obj.selected.select() + '\n')
-                r_buffer.write(target_obj.selected.select() + '\n')
-                db_selected = True
-
-            p_buffer.write(patch + '\n')
-            r_buffer.write(revert + '\n')
-
-    for patch, revert in syncdb.sync_triggers(source_obj.selected, target_obj.selected):
-        if patch and revert:
-            if not db_selected:
-                p_buffer.write(target_obj.selected.select() + '\n')
-                r_buffer.write(target_obj.selected.select() + '\n')
-                db_selected = True
-
-            p_buffer.write(patch + '\n')
-            r_buffer.write(revert + '\n')
-
-    for patch, revert in syncdb.sync_procedures(source_obj.selected, target_obj.selected):
-        if patch and revert:
-            if not db_selected:
-                p_buffer.write(target_obj.selected.select() + '\n')
-                r_buffer.write(target_obj.selected.select() + '\n')
-                db_selected = True
-
-            p_buffer.write(patch + '\n')
-            r_buffer.write(revert + '\n')
-
+        
     if not p_buffer.modified:
         logging.info(("No migration scripts written."
                       " mysql://%s/%s and mysql://%s/%s were in sync.") %
@@ -353,7 +329,7 @@ def app(sourcedb='', targetdb='', version_filename=False,
 
 def main():
     try:
-        sys.exit(parse_cmd_line(app)())
+        sys.exit(parse_cmd_line(app, schemasyncext.extApp)())
     except schemaobject.connection.DatabaseError, e:
         logging.error("MySQL Error %d: %s" % (e.args[0], e.args[1]))
         sys.exit(1)
