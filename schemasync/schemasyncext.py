@@ -14,8 +14,8 @@ def extOptions(parser):
     parser.add_option("--deletedb",
                         dest="delete_datebase_name",
                         help="delete datebase in target mysql")
-    parser.add_option("--synchrosyTables",
-                            dest="synchrosyTables",
+    parser.add_option("--synchronizedTables",
+                            dest="synchronizedTables",
                             action="store_true",
                             default=False,
                             help="synchronized the tables from source to target")                            
@@ -61,7 +61,7 @@ def extApp(options, sourcedb='', targetdb=''):
         logging.error("end delete database %s", db_name)
         return True
 
-    if options.synchrosyTables:
+    if options.synchronizedTables:
         logging.error("start synchronized database")
         synchrosyTables(sourcedb, targetdb, **dict(version_filename=options.version_filename,
                                 output_directory=options.output_directory,
