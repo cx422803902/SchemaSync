@@ -55,6 +55,9 @@ PATCH_TPL = """--
 
 %(data)s"""
 
+MY_PATCH_TPL = """
+%(data)s"""
+
 
 def parse_cmd_line(fn, extFn):
     """Parse the command line options and pass them to the application"""
@@ -246,12 +249,12 @@ def app(sourcedb='', targetdb='', version_filename=False,
 
     ctx['type'] = "Patch Script"
     p_buffer = utils.PatchBuffer(name=os.path.join(output_directory, p_fname),
-                                 filters=filters, tpl=PATCH_TPL, ctx=ctx.copy(),
+                                 filters=filters, tpl=MY_PATCH_TPL, ctx=ctx.copy(),
                                  version_filename=version_filename)
 
     ctx['type'] = "Revert Script"
     r_buffer = utils.PatchBuffer(name=os.path.join(output_directory, r_fname),
-                                 filters=filters, tpl=PATCH_TPL, ctx=ctx.copy(),
+                                 filters=filters, tpl=MY_PATCH_TPL, ctx=ctx.copy(),
                                  version_filename=version_filename)
 
     db_selected = False
@@ -259,10 +262,10 @@ def app(sourcedb='', targetdb='', version_filename=False,
                                             target_obj.selected, options):
         if patch and revert:
             if not db_selected:
-                p_buffer.write(target_obj.selected.select() + '\n')
-                r_buffer.write(target_obj.selected.select() + '\n')
-                p_buffer.write(target_obj.selected.fk_checks(0) + '\n')
-                r_buffer.write(target_obj.selected.fk_checks(0) + '\n')
+                # p_buffer.write(target_obj.selected.select() + '\n')
+                # r_buffer.write(target_obj.selected.select() + '\n')
+                # p_buffer.write(target_obj.selected.fk_checks(0) + '\n')
+                # r_buffer.write(target_obj.selected.fk_checks(0) + '\n')
                 db_selected = True
 
             p_buffer.write(patch + '\n')
@@ -271,8 +274,8 @@ def app(sourcedb='', targetdb='', version_filename=False,
     for patch, revert in syncdb.sync_views(source_obj.selected, target_obj.selected):
         if patch and revert:
             if not db_selected:
-                p_buffer.write(target_obj.selected.select() + '\n')
-                r_buffer.write(target_obj.selected.select() + '\n')
+                # p_buffer.write(target_obj.selected.select() + '\n')
+                # r_buffer.write(target_obj.selected.select() + '\n')
                 db_selected = True
 
             p_buffer.write(patch + '\n')
@@ -281,8 +284,8 @@ def app(sourcedb='', targetdb='', version_filename=False,
     for patch, revert in syncdb.sync_triggers(source_obj.selected, target_obj.selected):
         if patch and revert:
             if not db_selected:
-                p_buffer.write(target_obj.selected.select() + '\n')
-                r_buffer.write(target_obj.selected.select() + '\n')
+                # p_buffer.write(target_obj.selected.select() + '\n')
+                # r_buffer.write(target_obj.selected.select() + '\n')
                 db_selected = True
 
             p_buffer.write(patch + '\n')
@@ -292,18 +295,18 @@ def app(sourcedb='', targetdb='', version_filename=False,
         if patch and revert:
 
             if not db_selected:
-                p_buffer.write(target_obj.selected.select() + '\n')
-                r_buffer.write(target_obj.selected.select() + '\n')
-                p_buffer.write(target_obj.selected.fk_checks(0) + '\n')
-                r_buffer.write(target_obj.selected.fk_checks(0) + '\n')
+                # p_buffer.write(target_obj.selected.select() + '\n')
+                # r_buffer.write(target_obj.selected.select() + '\n')
+                # p_buffer.write(target_obj.selected.fk_checks(0) + '\n')
+                # r_buffer.write(target_obj.selected.fk_checks(0) + '\n')
                 db_selected = True
 
             p_buffer.write(patch + '\n')
             r_buffer.write(revert + '\n')
 
-    if db_selected:
-        p_buffer.write(target_obj.selected.fk_checks(1) + '\n')
-        r_buffer.write(target_obj.selected.fk_checks(1) + '\n')
+    # if db_selected:
+    #     p_buffer.write(target_obj.selected.fk_checks(1) + '\n')
+    #     r_buffer.write(target_obj.selected.fk_checks(1) + '\n')
         
     if not p_buffer.modified:
         logging.info(("No migration scripts written."

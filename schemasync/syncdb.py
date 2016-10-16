@@ -19,11 +19,11 @@ def sync_schema(fromdb, todb, options):
     """
     p, r = sync_database_options(fromdb, todb)
 
-    if p and r:
-        yield (
-            "%s %s;" % (todb.alter(), p),
-            "%s %s;" % (todb.alter(), r)
-        )
+    # if p and r:
+    #     yield (
+    #         "%s %s;" % (todb.alter(), p),
+    #         "%s %s;" % (todb.alter(), r)
+    #     )
 
     for p, r in sync_created_tables(fromdb.tables, todb.tables,
                                     sync_auto_inc=options['sync_auto_inc'],
