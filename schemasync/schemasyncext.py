@@ -2,6 +2,7 @@ import logging
 import optparse
 import schemaobject
 import utils
+import re
 
 import syncdb
 
@@ -21,7 +22,7 @@ def extOptions(parser):
                             help="synchronized the tables from source to target")                
     parser.add_option("--executeSql",
                             dest="executeSql",
-                            help"execute sql file")
+                            help="execute sql file")
 
 def extApp(options, sourcedb='', targetdb=''):
     console = logging.StreamHandler()
@@ -77,7 +78,7 @@ def extApp(options, sourcedb='', targetdb=''):
         logging.error("end synchronized database")                                
         return True
     if options.executeSql:
-        executeSql(targetdb, options.executeSql)
+        executeSql(targetdb, options.executeSql, options.charset)
         return True
     return False
 
@@ -122,7 +123,7 @@ def synchrosyTables(sourcedb='', targetdb='', version_filename=False,
     connection.connect(targetdb, charset)
     connection.execute_db_level_batch(patches)
 
-def executeSql(targetdb, sqlFile):
+def executeSql(targetdb, sqlFile, charset):
     sqlFile = open(sqlFile)
     try: 
         sqlLines = sqlFile.readlines()
@@ -143,7 +144,9 @@ def executeSql(targetdb, sqlFile):
             sqls.append(sql)
         sqlContents = sqlContents[endIndex+1:]
         endIndex = sqlContents.find(';')
-    execute_db_level_batch(self, sqls)
+    connection = DatabaseConnection()
+    connection.connect(targetdb, charset)
+    connection.execute_db_level_batch(sqls)        
 
 class DatabaseConnection(BaseConnection):
     """A lightweight wrapper around MySQLdb DB-API"""
