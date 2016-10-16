@@ -18,7 +18,10 @@ def extOptions(parser):
                             dest="synchronizedTables",
                             action="store_true",
                             default=False,
-                            help="synchronized the tables from source to target")                            
+                            help="synchronized the tables from source to target")                
+    parser.add_option("--executeSql",
+                            dest="executeSql",
+                            help"execute sql file")
 
 def extApp(options, sourcedb='', targetdb=''):
     console = logging.StreamHandler()
@@ -73,6 +76,9 @@ def extApp(options, sourcedb='', targetdb=''):
                                 sync_comments=options.sync_comments))
         logging.error("end synchronized database")                                
         return True
+    if options.executeSql:
+        executeSql(targetdb, options.executeSql)
+        return True
     return False
 
 def synchrosyTables(sourcedb='', targetdb='', version_filename=False,
@@ -115,6 +121,29 @@ def synchrosyTables(sourcedb='', targetdb='', version_filename=False,
     connection = DatabaseConnection()
     connection.connect(targetdb, charset)
     connection.execute_db_level_batch(patches)
+
+def executeSql(targetdb, sqlFile):
+    sqlFile = open(sqlFile)
+    try: 
+        sqlLines = sqlFile.readlines()
+    finally:
+        sqlFile.close()
+    sqlContents = ''
+    for sqlLine in sqlLines:
+        sqlLine = sqlLine.strip()
+        if sqlLine.find('--') != 0:
+            sqlContents += (sqlLine+'\n')
+    sqlContents, number = re.subn('/\*.*\*/', '', sqlContents)
+
+    sqls = []
+    endIndex = sqlContents.find(';')
+    while endIndex != -1:
+        sql = sqlContents[0:endIndex+1].strip()
+        if(len(sql) > 1):
+            sqls.append(sql)
+        sqlContents = sqlContents[endIndex+1:]
+        endIndex = sqlContents.find(';')
+    execute_db_level_batch(self, sqls)
 
 class DatabaseConnection(BaseConnection):
     """A lightweight wrapper around MySQLdb DB-API"""
