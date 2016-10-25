@@ -3,10 +3,14 @@ import optparse
 import schemaobject
 import utils
 import re
+import os
 
 import syncdb
 
 from schemaobject.connection import DatabaseConnection as BaseConnection
+
+MY_PATCH_TPL = """
+%(data)s"""
 
 def extOptions(parser):
     parser.add_option("--createdb",
@@ -22,7 +26,10 @@ def extOptions(parser):
                             help="synchronized the tables from source to target")                
     parser.add_option("--executeSql",
                             dest="executeSql",
-                            help="execute sql file")
+                            help="execute sql file"),
+    parser.add_option("--backupSql",
+                            dest="output_file",
+                            help="backup source db sql file")
 
 def extApp(options, sourcedb='', targetdb=''):
     console = logging.StreamHandler()
@@ -65,6 +72,7 @@ def extApp(options, sourcedb='', targetdb=''):
         logging.error("end delete database %s", db_name)
         return True
 
+    """synchrosyTables from source to target"""
     if options.synchronizedTables:
         logging.error("start synchronized database")
         synchrosyTables(sourcedb, targetdb, **dict(version_filename=options.version_filename,
@@ -79,6 +87,17 @@ def extApp(options, sourcedb='', targetdb=''):
         return True
     if options.executeSql:
         executeSql(targetdb, options.executeSql, options.charset)
+        return True
+    if options.output_file is not None:
+        backupSql(sourcedb, targetdb, **dict(version_filename=options.version_filename,
+                                output_directory=options.output_directory,
+                                log_directory=options.log_directory,
+                                no_date=options.no_date,
+                                tag=options.tag,
+                                charset=options.charset,
+                                sync_auto_inc=options.sync_auto_inc,
+                                sync_comments=options.sync_comments,
+                                outputFile=options.output_file))
         return True
     return False
 
@@ -147,6 +166,43 @@ def executeSql(targetdb, sqlFile, charset):
     connection = DatabaseConnection()
     connection.connect(targetdb, charset)
     connection.execute_db_level_batch(sqls)        
+
+def backupSql(sourcedb='', targetdb='', version_filename=False,
+        output_directory=None, log_directory=None, no_date=False,
+        tag=None, charset=None, sync_auto_inc=False, sync_comments=False, outputFile=''):
+    source_obj = schemaobject.SchemaObject(sourcedb, charset)
+
+    # data transformation filters
+    filters = (lambda d: utils.REGEX_MULTI_SPACE.sub(' ', d),
+               lambda d: utils.REGEX_DISTANT_SEMICOLIN.sub(';', d),
+               lambda d: utils.REGEX_SEMICOLON_EXPLODE_TO_NEWLINE.sub(";\n", d))
+
+    # Information about this run, used in the patch/revert templates
+    ctx = dict()
+    p_fname = outputFile.replace('{table}', source_obj.selected.name)
+
+    ctx['type'] = "Patch Script"
+    p_buffer = utils.PatchBuffer(name=os.path.join(output_directory, p_fname),
+                                 filters=filters, tpl=MY_PATCH_TPL, ctx=ctx.copy(),
+                                 version_filename=version_filename)
+
+    tables = source_obj.selected.tables
+    for t in tables:
+        ct = tables[t].create()
+        p_buffer.write(ct+'\n')
+    views = source_obj.selected.views
+    for v in views:
+        vt = views[v].create()
+        p_buffer.write(vt+'\n')
+
+    try:
+        p_buffer.save()
+        logging.info("success export table sql from database")
+    except OSError, e:
+        p_buffer.delete()
+        logging.error("Failed writing migration scripts. %s" % e)
+        return 1
+    return 0
 
 class DatabaseConnection(BaseConnection):
     """A lightweight wrapper around MySQLdb DB-API"""
