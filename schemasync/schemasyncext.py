@@ -189,6 +189,7 @@ def backupSql(sourcedb='', targetdb='', version_filename=False,
     tables = source_obj.selected.tables
     for t in tables:
         ct = tables[t].create()
+        ct=filterCreate(ct)
         p_buffer.write(ct+'\n')
     views = source_obj.selected.views
     for v in views:
@@ -203,6 +204,9 @@ def backupSql(sourcedb='', targetdb='', version_filename=False,
         logging.error("Failed writing migration scripts. %s" % e)
         return 1
     return 0
+
+def filterCreate(ct):
+    return ct.replace('AUTO_INCREMENT=[0-9]*?\s*?', '')
 
 class DatabaseConnection(BaseConnection):
     """A lightweight wrapper around MySQLdb DB-API"""
